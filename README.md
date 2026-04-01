@@ -1,139 +1,75 @@
 # nanodiffusion
 
-Diffusion and Flow Matching from first principles. ~200 lines of PyTorch, runs on CPU.
+> Diffusion and Flow Matching from first principles in ~300 lines of PyTorch
 
-**Goal**: Understand how modern generative models work by building the minimal version.
-
-## Quick Start
+`nanodiffusion.py` trains both DDPM and Flow Matching on MNIST. No config files, no abstractions. Run it:
 
 ```bash
-cd ~/nanodiffusion
 uv sync
 uv run python nanodiffusion.py
 ```
 
-This will:
-1. Load 500 MNIST digits (16×16 grayscale)
-2. Train with DDPM (100-step sampling)
-3. Train with Flow Matching (4-step sampling)
-4. Generate samples with both methods
-5. Save comparison images
+You'll see loss curves, tensor shapes at every step, and two output images: `samples_ddpm.png` (100 steps) and `samples_flow.png` (4 steps). Same model architecture, different training targets.
 
-## What This Teaches
+I built this after realizing most diffusion codebases are practical before they're obvious. Papers are math-heavy, tutorials dump 500 lines of config, and you're left wondering what actually matters. This one strips it down to the core loop: mix noise with data, train a model to predict direction, sample by following that direction.
 
-- **Unified U-Net** — same architecture for both diffusion and flow matching
-- **DDPM** — Complex noise schedule, predict noise, stochastic sampling
-- **Flow Matching** — Simple linear interpolation, predict velocity, deterministic sampling
-- **Key insight**: Same model, different training targets
+The notebook (`notebooks/01_intuition.ipynb`) goes deeper with matplotlib visualizations of the noise schedule, forward process, training curves, and sampling trajectory. It's designed to run top-to-bottom and produce all its own figures.
 
-## The Core Difference (3 Things)
+## The Core Insight
 
-### 1. Training pairs
+DDPM and Flow Matching are the same thing with different wrappers:
 
-```python
-# DDPM: complex schedule
-x_noisy = sqrt(alpha_bar[t]) * x0 + sqrt(1 - alpha_bar[t]) * noise
+| | DDPM | Flow Matching |
+|---|---|---|
+| Forward | Complex schedule (α, β, cumsum) | Linear interpolation |
+| Predicts | Noise ε | Velocity v = data - noise |
+| Sampling | 100 stochastic steps | 4 Euler steps |
 
-# Flow Matching: linear interpolation (t=0 is noise, t=1 is data)
-x_t = (1 - t) * noise + t * x0
-```
+The U-Net is identical. Only the training target and sampling loop differ. Flow Matching wins on simplicity and speed.
 
-### 2. Training target
+## What To Look For
 
-```python
-# DDPM: predict noise
-loss = mse(model(x_noisy, t), noise)
+During training, watch the loss drop and samples improve:
+- Early: pure noise, random pixels
+- Middle: blurry digit-like shapes emerge
+- Late: recognizable digits, though imperfect at 16x16
 
-# Flow Matching: predict velocity (direction from noise to data)
-velocity = x0 - noise
-loss = mse(model(x_t, t), velocity)
-```
+The printed tensor shapes show data flowing through the model. The 16x16 resolution and tiny U-Net are deliberate -- this runs on CPU in under a minute.
 
-### 3. Sampling
+## How To Read The Code
 
-```python
-# DDPM: 100 steps going backwards t=99 → t=0
-for t in reversed(range(100)):
-    pred = model(x, t)
-    x = compute_mean(x, pred, t) + noise
+Read `nanodiffusion.py` in this order:
 
-# Flow Matching: 4 steps going forward t=0 → t=1 via Euler integration
-for i in range(4):
-    t = i / 4
-    velocity = model(x, t)
-    x = x + velocity * dt
-```
+1. Config and data loading
+2. `SinusoidalEmbed` -- time conditioning (like positional encoding)
+3. `ConvBlock` -- conv + norm + time injection
+4. `TinyUNet` -- encode → bottleneck → decode
+5. `q_sample_ddpm` vs `q_sample_flow` -- the forward processes
+6. `train_ddpm` vs `train_flow` -- same loop, different targets
+7. `sample_ddpm` vs `sample_flow` -- the reverse processes
 
-## File Structure
+If you understand those seven pieces, you understand diffusion.
 
-```
-nanodiffusion.py        # Complete implementation (~200 lines)
-notebooks/
-  01_intuition.ipynb    # Teaching companion
-exp/                    # Optional: CIFAR-10 training (see below)
-PLANNING.md             # Pedagogical decisions
-README.md               # This file
-pyproject.toml          # Dependencies
-```
+## What's Not Here
 
-## CIFAR-10 Training (Optional)
+- No VAE/latent space (we work in pixel space)
+- No text conditioning or CLIP
+- No classifier-free guidance
+- No EMA, checkpointing, or fancy schedulers
+- No distributed training
 
-For more serious training on CIFAR-10 with a proper U-Net:
-
-```bash
-cd ~/nanodiffusion/exp
-uv pip install -r requirements.txt
-uv run python train_cifar.py
-```
-
-This trains flow matching on 32×32 color images. Runs on MPS/CUDA.
-
-## Architecture
-
-```
-Input: noisy image (16x16) + timestep
-       ↓
-Time embedding (sinusoidal → MLP)
-       ↓
-U-Net: ConvBlock (16x16) → downsample (7x7) → ConvBlock → upsample (16x16) → ConvBlock
-       ↓
-Output: predicted noise (DDPM) or velocity (Flow)
-```
-
-## Key Concepts
-
-### Forward Process
-- DDPM: Add noise via carefully designed schedule
-- Flow: Linear interpolation between noise and data
-
-### Reverse Process
-- Both: Learn to predict (noise or velocity)
-- DDPM: Subtract noise with stochastic steps (100 steps)
-- Flow: Follow velocity field deterministically (4 steps)
-
-### Training
-Simple MSE loss on the predicted quantity.
-
-## Why Both Methods?
-
-| Aspect | DDPM | Flow Matching |
-|--------|------|---------------|
-| Sampling steps | 50-1000 | 1-4 |
-| Training complexity | Higher | Lower |
-| Modern relevance | SD 1.5/SDXL | Flux, SOTA |
-| Teaching value | Historical context | Simpler, faster |
-
-**Teaching strategy**: Learn the architecture once, see both training targets, understand why flow matching wins.
+These matter for production. They don't matter for understanding.
 
 ## Next Steps
 
-- Add class conditioning
-- Scale up to 64×64 color images
-- Introduce cross-attention for text conditioning
-- Classifier-free guidance
+After this clicks, you can:
+- Add class conditioning (concatenate one-hot to input)
+- Scale to 64x64 color images
+- Add cross-attention for text
+- Study Flux/SD3 which use Flow Matching
 
-## Resources
+## Related
 
-- DDPM paper: https://arxiv.org/abs/2006.11239
-- Flow Matching paper: https://arxiv.org/abs/2210.02747
-- Rectified Flow: https://arxiv.org/abs/2209.03003
+If you want the GPT equivalent of this approach, see [yoctogpt](https://github.com/Infatoshi/yoctogpt) -- 100 lines, pure Python, no dependencies.
+
+For GPU programming, I have a [CUDA course](https://www.youtube.com/playlist?list=PLxNPSjHT5qvvIlKHZ3CGUBphnJ4zhtzr_) (12 hrs, 500K+ views) that covers kernel programming from scratch.
