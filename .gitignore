@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Data and outputs
+data/
+samples_*.png
+*.pt
+*.pth
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Experiment outputs
+exp/samples/
+exp/checkpoints/
+exp/cifar10/
+
+# Ruff cache
+.ruff_cache/
+
+# Scripts (internal)
+scripts/
+
+# Lock file (optional - uncomment to track)
+# uv.lock
