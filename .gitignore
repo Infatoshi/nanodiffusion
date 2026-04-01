@@ -30,10 +30,8 @@ samples_*.png
 *.swo
 .DS_Store
 
-# Experiment outputs
-exp/samples/
-exp/checkpoints/
-exp/cifar10/
+# Experiments (optional, not shipped)
+exp/
 
 # Ruff cache
 .ruff_cache/

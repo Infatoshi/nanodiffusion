@@ -1,5 +1,0 @@
-cifar10/
-checkpoints/
-samples/
-__pycache__/
-*.pt
