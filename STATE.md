@@ -14,36 +14,31 @@ Minimal diffusion/flow matching implementation for teaching. Two methods:
 - Clean, documented, ready for teaching
 - Notebook at `notebooks/01_intuition.ipynb` has matplotlib visualizations
 
-## Active Training Job on Anvil
+## Video Training: COMPLETED ✓
 
 **Location**: `~/nanovideo/` on `anvil` (RTX 3090, 24GB)
 
-**What's training**: Video flow matching on colorful bouncing balls physics simulation
+**What trained**: Video flow matching on colorful bouncing balls physics simulation
 - 16 frames @ 48x48 RGB
 - 2.6M param 3D UNet
-- 30,000 steps
-- ETA: ~2 hours from start (~04:45 UTC)
+- 30,000 steps completed in ~2 hours
+- Final loss: ~0.025
 
-**Monitor**:
-```bash
-ssh anvil "tail -20 ~/nanovideo/train.log"
-```
+**Results pulled to**: `nanovideo-outputs/` in this repo
+- `g_30000.gif` - final generated sample
+- `gt0.gif`, `gt1.gif` - ground truth examples
 
-**Pull samples**:
-```bash
-scp anvil:~/nanovideo/outputs/*.gif .
-```
-
-**Files on anvil**:
+**All outputs on anvil**:
+- `~/nanovideo/outputs/final.pt` - trained model weights
+- `~/nanovideo/outputs/g_*.gif` - generated samples at checkpoints
+- `~/nanovideo/outputs/s_*.png` - comparison grids (gen vs GT)
 - `~/nanovideo/train_physics.py` - training script
-- `~/nanovideo/outputs/` - checkpoints, sample GIFs, loss plots
-- `~/nanovideo/train.log` - live training output
 
 ## Next Steps
 
-1. **Check training results** - Once done, pull GIFs and evaluate quality
-2. **If good**: Create `nanovideo.py` - standalone video flow matching implementation for the repo
-3. **If bad**: Tune hyperparameters or try different data (BAIR robot, etc.)
+1. **Evaluate quality** - View GIFs in `nanovideo-outputs/`, compare gen vs GT
+2. **If good**: Create `nanovideo.py` - standalone video flow matching for the repo
+3. **If not good enough**: Tune hyperparameters, increase steps, or try different data
 4. **Teaching goal**: Show video generation is just image diffusion + temporal dimension
 
 ## Key Decisions Made
